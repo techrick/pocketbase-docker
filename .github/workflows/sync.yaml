@@ -62,3 +62,4 @@ jobs:
       tag: ${{ matrix.version }}
       latest: ${{ matrix.version == needs.detect.outputs.newest }}
     secrets: inherit
+# (re-index trigger)
