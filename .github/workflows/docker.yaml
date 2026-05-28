@@ -75,4 +75,3 @@ jobs:
           build-args: VERSION=${{ steps.t.outputs.version }}
           cache-from: type=gha,scope=${{ steps.t.outputs.tag }}
           cache-to: type=gha,mode=max,scope=${{ steps.t.outputs.tag }}
-# (re-index trigger)
