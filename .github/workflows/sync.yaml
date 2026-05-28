@@ -1,0 +1,64 @@
+name: sync
+
+# Daily: ask the upstream PocketBase Releases API for the newest versions,
+# build a container image for any that don't have one yet.
+on:
+  schedule:
+    - cron: '0 3 * * *'   # daily ~03:00 UTC
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max number of newest releases to check / backfill'
+        default: '10'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.find.outputs.versions }}
+      newest: ${{ steps.find.outputs.newest }}
+    steps:
+      - name: Find releases without an image
+        id: find
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LIMIT: ${{ github.event.inputs.limit || '10' }}
+          IMAGE: ghcr.io/${{ github.repository }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          TAGS=$(gh api repos/pocketbase/pocketbase/releases --paginate \
+            --jq '.[] | select(.draft==false and .prerelease==false) | .tag_name' | head -n "$LIMIT")
+          NEWEST=$(echo "$TAGS" | head -n1)
+          echo "newest=${NEWEST}" >> "$GITHUB_OUTPUT"
+          MISSING=()
+          for TAG in $TAGS; do
+            # images are tagged without the leading "v" (semver)
+            if ! docker manifest inspect "${IMAGE}:${TAG#v}" >/dev/null 2>&1; then
+              MISSING+=("$TAG")
+            fi
+          done
+          if [ ${#MISSING[@]} -eq 0 ]; then
+            echo 'versions=[]' >> "$GITHUB_OUTPUT"
+          else
+            printf '%s\n' "${MISSING[@]}" | jq -R . | jq -cs . | sed 's/^/versions=/' >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: detect
+    if: ${{ needs.detect.outputs.versions != '[]' && needs.detect.outputs.versions != '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJson(needs.detect.outputs.versions) }}
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker.yaml
+    with:
+      tag: ${{ matrix.version }}
+      latest: ${{ matrix.version == needs.detect.outputs.newest }}
+    secrets: inherit
