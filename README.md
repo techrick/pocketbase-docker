@@ -10,7 +10,7 @@ recent version that doesn't have one yet, to **GitHub Container Registry (GHCR)*
 ## Usage
 
 ```sh
-docker run -p 8090:8090 -v "$PWD/pb_data:/pb/pb_data" ghcr.io/OWNER/REPO:latest
+docker run -p 8090:8090 -v "$PWD/pb_data:/pb/pb_data" ghcr.io/techrick/pocketbase-docker:latest
 ```
 
 - Admin UI: <http://localhost:8090/_/>
