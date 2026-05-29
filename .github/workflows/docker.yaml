@@ -63,7 +63,6 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}},value=${{ steps.t.outputs.tag }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.t.outputs.tag }}
             type=raw,value=latest,enable=${{ inputs.latest }}
 
       - name: Build and push

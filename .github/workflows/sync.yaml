@@ -30,9 +30,13 @@ jobs:
           IMAGE: ghcr.io/${{ github.repository }}
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          TAGS=$(gh api repos/pocketbase/pocketbase/releases --paginate \
-            --jq '.[] | select(.draft==false and .prerelease==false) | .tag_name' | head -n "$LIMIT")
-          NEWEST=$(echo "$TAGS" | head -n1)
+          ALL=$(gh api repos/pocketbase/pocketbase/releases --paginate \
+            --jq '.[] | select(.draft==false and .prerelease==false) | .tag_name')
+          # build candidates = the LIMIT most recently published releases
+          TAGS=$(echo "$ALL" | head -n "$LIMIT")
+          # newest = highest VERSION across all releases (not by date), so :latest
+          # is never moved onto an old-branch backport patch
+          NEWEST=$(echo "$ALL" | sort -V | tail -n1)
           echo "newest=${NEWEST}" >> "$GITHUB_OUTPUT"
           MISSING=()
           for TAG in $TAGS; do
